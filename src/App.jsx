@@ -9,6 +9,7 @@ import {
 
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
+const [deviceType, setDeviceType] = useState("Detecting...");
 
 export default function App() {
   const [images, setImages] = useState([]);
@@ -24,16 +25,30 @@ export default function App() {
   useEffect(() => {
     (async () => {
       try {
-        if (!navigator.gpu) {
-          throw new Error("WebGPU is not supported in this browser.");
-        }
         const model_id = "Xenova/modnet";
         env.backends.onnx.wasm.proxy = false;
-        modelRef.current ??= await AutoModel.from_pretrained(model_id, {
-          device: "webgpu",
-        });
+
+        // 嘗試使用 WebGPU
+        try {
+          console.log("嘗試使用 WebGPU...");
+          modelRef.current = await AutoModel.from_pretrained(model_id, {
+            device: "webgpu",
+          });
+          setDeviceType("WebGPU 🚀"); // 成功時設定為 WebGPU
+          console.log("✅ WebGPU 載入成功");
+        } catch (gpuError) {
+          // WebGPU 失敗，回退至 CPU (WASM)
+          console.warn("❌ WebGPU 失敗，回退至 CPU:", gpuError.message);
+          modelRef.current = await AutoModel.from_pretrained(model_id, {
+            device: "wasm",
+          });
+          setDeviceType("CPU (WASM) 🐌"); // 失敗時設定為 CPU
+          console.log("ℹ️ 已成功切換至 CPU 模式");
+        }
+
         processorRef.current ??= await AutoProcessor.from_pretrained(model_id);
       } catch (err) {
+        console.error("模型載入完全失敗:", err);
         setError(err);
       }
       setIsLoading(false);
@@ -208,6 +223,16 @@ export default function App() {
         <h1 className="text-4xl font-bold mb-2 text-center">
           Remove Background WebGPU
         </h1>
+
+        {/* 新增：顯示目前硬體模式的標籤 */}
+        <div className="flex justify-center mb-4">
+          <span className={`px-4 py-1 rounded-full text-sm font-bold ${
+            deviceType.includes("WebGPU") ? "bg-green-600" : "bg-yellow-600"
+          }`}>
+            Current Mode: {deviceType}
+          </span>
+        </div>
+
         <h2 className="text-lg font-semibold mb-2 text-center">
           In-browser background removal, powered by{" "}
           <a
