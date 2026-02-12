@@ -9,9 +9,10 @@ import {
 
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
-const [deviceType, setDeviceType] = useState("Detecting...");
 
 export default function App() {
+  const [deviceType, setDeviceType] = useState("Detecting...");
+  
   const [images, setImages] = useState([]);
   const [processedImages, setProcessedImages] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
